@@ -1,0 +1,151 @@
+
+<html>
+
+<head>
+	<!--Bootstrap-->
+    <link href="./css/bootstrap.css" rel="stylesheet" media="screen">
+	<script type="text/javascript">
+	/*global CanvasJS io */
+	window.onload = function () {
+		
+		var port = window.location.port,
+	    host = window.location.hostname,
+	    protocol = window.location.protocol,
+	    path = '/',
+	    url, 
+	    options = { };
+	
+		if( protocol.indexOf( 'https' ) > -1 ) {
+		    protocol = 'wss:';
+		} else {
+		    protocol = 'ws:'
+		}
+		
+		url = protocol + "//" + host + ":" + port + path;
+		
+		options = { };
+	
+		/*
+		// If you wanted to add an access token, "Session" is where I store this
+		if( Session.token ) {
+		   options.query = 'access_token=' + Session.token;
+		}
+		*/
+	
+		var socket = io( url, options );
+		
+		function getDateTime() {
+		    var time = new Date().getTime();
+		    // 32400000 is (GMT+9 Japan)
+		    // for your timezone just multiply +/-GMT by 36000000
+		    //var datestr = new Date(time + 19800000).toISOString().replace(/T/, ' ').replace(/Z/, '');
+		    var dateTime = time; //+ 19800000;
+		    return dateTime;
+		}
+
+		//var socket = io.connect('http://10.95.145.56:5002');
+
+		var dps_temp = []; // dataPoints
+
+		var chart_temp = new CanvasJS.Chart("chartContainerTemp",{
+			title :{
+				text: "Live Temperature"
+			},
+			zoomEnabled: true, 
+			zoomType: "xy",
+			theme: "theme1",
+			axisY:{
+  				title:"Temperature (C)",
+  			},
+  			axisX:{
+  				title:"Time",
+  			},
+			data: [{
+				type: "line",
+				xValueType: "dateTime",
+				dataPoints: dps_temp 
+			}]
+		});
+
+		var dps_hum = []; // dataPoints
+		var chart_hum = new CanvasJS.Chart("chartContainerHum",{
+			title :{
+				text: "Live Humidity"
+			},
+			zoomEnabled: true, 
+			zoomType: "xy",
+			theme: "theme1",
+			axisY:{
+  				title:"Humidity (%)",
+  			},
+  			axisX:{
+  				title:"Time",
+  			},
+
+			data: [{
+				type: "line",
+				xValueType: "dateTime",
+				dataPoints: dps_hum
+			}]
+		});
+
+		var xVal = getDateTime();
+
+		var yVal_temp = 100;	
+		var yVal_hum = 100;
+		
+		var updateInterval = 1000;
+		var dataLength = 10000; // number of dataPoints visible at any point
+
+		socket.on('old_data', function(data) {
+			
+			console.log(data);
+			var sensorData = data.livedata;
+			var temp = sensorData.temperature;
+			var hum = sensorData.humidity;
+
+			xVal = getDateTime();
+			yVal_temp = temp;
+			yVal_hum = hum;
+
+			dps_temp.push({
+ 					x: xVal,
+ 					y: yVal_temp
+ 				});
+
+			dps_hum.push({
+ 					x: xVal,
+ 					y: yVal_hum
+ 				});
+
+			if (dps_temp.length > dataLength)
+			{
+				dps_temp.shift();				
+			}
+			
+			if (dps_hum.length > dataLength)
+			{
+				dps_hum.shift();				
+			}
+			chart_temp.render();		
+			chart_hum.render();		
+		});
+	}
+	</script>
+	<script type="text/javascript" src="../js/canvasjs.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	
+</head>
+<body>
+	<div class="jumbotron">
+	            <div class="container ">
+	                <h1>DHT-11 on Raspberry Pi with NodeJS</h1>
+	            </div>
+	</div>
+	<div class=container">
+	<div id="chartContainerTemp" style="height: 300px; width:100%;"> </div>
+	<div id="chartContainerHum" style="height: 300px; width:100%;">
+	</div>
+	</div>
+</body>
+</html>
